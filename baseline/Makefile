@@ -7,10 +7,13 @@ CFLAGS_NO_O3 := $(BASE_CFLAGS)
 # Directories
 SRC_DIR     := src
 CONV_DIR    := $(SRC_DIR)/conv
-WRITE_DIR   := $(SRC_DIR)/write
 TEST_DIR    := tests
 BIN_DIR     := bin
 SCRIPTS_DIR := scripts
+
+# Source Files
+SRC      := $(CONV_DIR)/conv2d.c $(SRC_DIR)/main.c
+SRC_TEST := $(CONV_DIR)/conv2d.c $(TEST_DIR)/test_conv.c
 
 # Color output
 BLUE=\033[0;34m
@@ -38,12 +41,12 @@ build: build-o3 build-no_o3 ## Compile baseline convolution executables (with -O
 .PHONY: build-o3
 build-o3: ## Compile baseline convolution executable with -O3 optimization
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS_O3) $(CONV_DIR)/conv2d.c $(WRITE_DIR)/write.c $(SRC_DIR)/main.c -o $(BIN_DIR)/baseline_o3
+	$(CC) $(CFLAGS_O3) $(SRC) -o $(BIN_DIR)/baseline_o3
 
 .PHONY: build-no_o3
 build-no_o3: ## Compile baseline convolution executable without -O3 optimization (-O0)
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS_NO_O3) $(CONV_DIR)/conv2d.c $(WRITE_DIR)/write.c $(SRC_DIR)/main.c -o $(BIN_DIR)/baseline_no_o3
+	$(CC) $(CFLAGS_NO_O3) $(SRC) -o $(BIN_DIR)/baseline_no_o3
 
 ##@ Execution
 
@@ -80,7 +83,7 @@ run-no-O3:
 .PHONY: test
 test: ## Compile and run unit tests using assert()
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS_O3) $(CONV_DIR)/conv2d.c $(WRITE_DIR)/write.c $(TEST_DIR)/test_conv.c -o $(BIN_DIR)/test_conv -lm
+	$(CC) $(CFLAGS_O3) $(SRC_TEST) -o $(BIN_DIR)/test_conv -lm
 	@./$(BIN_DIR)/test_conv
 
 ##@ Clean

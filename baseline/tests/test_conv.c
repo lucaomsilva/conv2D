@@ -3,7 +3,6 @@
 #include <math.h>
 #include <assert.h>
 #include "../src/conv/conv2d.h"
-#include "../src/write/write.h"
 
 // Tolerance threshold for floating-point comparisons
 #define EPSILON 1e-5f
@@ -94,14 +93,6 @@ void test_row_vs_col_major_equivalence() {
     printf("       -> PASSED: Row-Major and Column-Major outputs are identical.\n");
 }
 
-// Test 4: CSV Time Logging Test
-void test_write_time_csv() {
-    printf("[TEST] Running test_write_time_csv...\n");
-    int status = write_time_csv("2026-10-08 10:00:00", 0.123456);
-    assert(status == 0);
-    printf("       -> PASSED: Execution time CSV write returned success.\n");
-}
-
 int main() {
     printf("=======================================\n");
     printf("  Running 2D Convolution Unit Tests    \n");
@@ -110,7 +101,6 @@ int main() {
     test_identity_kernel();
     test_box_blur_kernel();
     test_row_vs_col_major_equivalence();
-    test_write_time_csv();
 
     printf("=======================================\n");
     printf("  ALL UNIT TESTS PASSED SUCCESSFULLY!  \n");
