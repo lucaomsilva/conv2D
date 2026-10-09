@@ -23,10 +23,10 @@ sudo dnf install -y \
 
 # Profiling & Energy Tools
 echo "Installing perf, powercap, and OpenCV..."
-sudo dnf install -y \
+sudo dnf install -y --disablerepo="*lionheartp*" --skip-unavailable \
     perf \
-    powercap-utils \
-    opencv-devel || echo "Note: Some packages might be in EPEL or require extra repos."
+    powercap \
+    opencv-devel || echo "Note: Some optional profiling packages skipped."
 
 # Optional: Try installing likwid if available in repos
 sudo dnf install -y likwid likwid-devel 2>/dev/null || echo "LIKWID not in standard repos; can be compiled from source if needed."
