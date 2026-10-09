@@ -9,8 +9,8 @@ BINARY="$BASELINE_DIR/bin/baseline_o3"
 DOCS_DIR="$ROOT_DIR/docs"
 
 if [ ! -f "$BINARY" ]; then
-    echo "Error: Binary $BINARY not found. Please compile first using 'make build-o3' or 'make build'."
-    exit 1
+  echo "Error: Binary $BINARY not found. Please compile first using 'make build-o3' or 'make build'."
+  exit 1
 fi
 
 mkdir -p "$DOCS_DIR"
@@ -23,39 +23,28 @@ echo " Starting Benchmarks for baseline_o3 (-O3 Optimization)  "
 echo "=========================================================="
 
 for N in "${SIZES[@]}"; do
-    for M in "${MODES[@]}"; do
-        if [ "$M" -eq 0 ]; then
-            MODE_NAME="row"
-            MODE_LABEL="Row-Major"
-        else
-            MODE_NAME="col"
-            MODE_LABEL="Column-Major"
-        fi
+  for M in "${MODES[@]}"; do
+    if [ "$M" -eq 0 ]; then
+      MODE_NAME="row"
+      MODE_LABEL="Row-Major"
+    else
+      MODE_NAME="col"
+      MODE_LABEL="Column-Major"
+    fi
 
-        CSV_FILE="$DOCS_DIR/data/baseline/baseline_o3_${N}_${MODE_NAME}.csv"
+    CSV_FILE="$DOCS_DIR/data/baseline/baseline_o3_${N}_${MODE_NAME}.csv"
 
-        # Remove existing CSV file for a fresh start with clean header
-        rm -f "$CSV_FILE"
+    # Remove existing CSV file for a fresh start with clean header
+    rm -f "$CSV_FILE"
 
-        echo "----------------------------------------------------------"
-        echo " Configuration : Matrix ${N}x${N} | Mode: ${MODE_LABEL} (${MODE_NAME})"
-        echo " CSV Output    : ${CSV_FILE}"
-        echo "----------------------------------------------------------"
+    echo "----------------------------------------------------------"
+    echo " Configuration : Matrix ${N}x${N} | Mode: ${MODE_LABEL} (${MODE_NAME})"
+    echo " CSV Output    : ${CSV_FILE}"
+    echo "----------------------------------------------------------"
 
-        # 1. Warmup: Run binary 5 times without CSV path (not logged to CSV)
-        echo " -> Executing 5 warmup runs..."
-        for w in {1..5}; do
-            "$BINARY" "$N" "$M" > /dev/null 2>&1
-        done
-
-        # 2. Benchmark: Run binary 10 times with CSV path (logged to CSV)
-        echo " -> Executing 10 benchmark runs..."
-        for r in {1..10}; do
-            "$BINARY" "$N" "$M" "$CSV_FILE" > /dev/null 2>&1
-        done
-
-        echo " -> Finished 10 runs for ${N}x${N} ${MODE_LABEL}."
-    done
+    PROFILER="$BASELINE_DIR/scripts/profile_metrics.py"
+    sudo python3 "$PROFILER" --binary "$BINARY" --size "$N" --mode "$M" --output-csv "$CSV_FILE" --runs 10 --warmup 5
+  done
 done
 
 echo "=========================================================="
