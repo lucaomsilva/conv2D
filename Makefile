@@ -30,32 +30,26 @@ install/tools: ## Install performance and energy profiling tools using DNF packa
 uninstall/tools: ## Uninstall performance and energy profiling tools using DNF package manager
 	@bash $(SCRIPTS_DIR)/uninstall_tools.sh
 
+##@ Baseline
+
+.PHONY: baseline-%
+baseline-%: ## General make for baseline
+	@make -C baseline $*
+
 ##@ Build
 
 .PHONY: build
-build: build-baseline ## Compile baseline 2D convolution program
-
-.PHONY: build-%
-build-%: ## Compile baseline 2D convolution program
-	@make -C $* build
+build: baseline-build ## Compile baseline 2D convolution program
 
 ##@ Run
 
 .PHONY: run
-run: run-baseline ## Run baseline benchmark binaries
-
-.PHONY: run-%
-run-%: ## Run baseline binary with -O3 or without -O3 (e.g. make run-o3, make run-no_o3)
-	@make -C $* run
+run: baseline-run ## Run baseline benchmark binaries
 
 ##@ Test
 
 .PHONY: test
-test: test-baseline ## Run 2D convolution unit tests
-
-.PHONY: test-%
-test-%: ## Run 2D convolution unit tests using assert()
-	@make -C $* test
+test: baseline-test ## Run 2D convolution unit tests
 
 ##@ Documentation
 
@@ -81,5 +75,4 @@ clean/docs/tools: ## Remove generated tools documentation directory
 	rm -rf $(DOCS_DIR)/tools
 
 .PHONY: clean
-clean: clean/docs/hardware clean/docs/tools ## Clean all generated artifacts
-	@make -C baseline clean
+clean: clean/docs/hardware clean/docs/tools baseline-clean ## Clean all generated artifacts
