@@ -18,14 +18,6 @@ static inline double func_time(conv_func_t conv_fn, const float* input, float* o
     return (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) * 1e-9;
 }
 
-static inline double calculate_mflops(int N, double time_sec) {
-    if (time_sec <= 0.0 || N <= 2) {
-        return 0.0;
-    }
-    double total_flops = (double)(N - 2) * (double)(N - 2) * 17.0;
-    return (total_flops / 1e6) / time_sec;
-}
-
 int main(int argc, char* argv[]) {
     int N = (argc > 1) ? atoi(argv[1]) : 1024;
     int mode = (argc > 2) ? atoi(argv[2]) : 0; // 0 = Row-Major (Contiguous), 1 = Column-Major (Non-Contiguous)
@@ -56,12 +48,9 @@ int main(int argc, char* argv[]) {
     // Execute convolution inside func_time
     double elapsed = func_time(conv_fn, input, output, N, GAUSSIAN_KERNEL);
 
-    double mflops = calculate_mflops(N, elapsed);
-
     printf("Execution Time: %.6f seconds\n", elapsed);
-    printf("MFLOPS        : %.2f\n", mflops);
     printf("===========================================\n");
-    printf("JSON_METRICS:{\"kernel_time_s\": %.6f, \"mflops\": %.4f}\n", elapsed, mflops);
+    printf("JSON_METRICS:{\"kernel_time_s\": %.6f}\n", elapsed);
 
     free(input);
     free(output);

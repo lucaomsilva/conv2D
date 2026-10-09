@@ -184,8 +184,8 @@ def execute_profiling_benchmark(binary_path:str, size:int, mode:int, warmup_runs
 # STAGE 7: Output Parsing (C Stdout JSON & Perf Stderr Counters)
 # ==============================================================================
 def parse_c_stdout_json(stdout_text):
-    """Extracts kernel_time_s and mflops from C's JSON_METRICS stdout line."""
-    c_data = {"kernel_time_s": 0.0, "mflops": 0.0}
+    """Extracts kernel_time_s from C's JSON_METRICS stdout line."""
+    c_data = {"kernel_time_s": 0.0}
     for line in stdout_text.splitlines():
         if line.startswith("JSON_METRICS:"):
             json_str = line.replace("JSON_METRICS:", "").strip()
