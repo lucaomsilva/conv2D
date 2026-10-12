@@ -1,7 +1,7 @@
 # Compiler and Flags Configuration
 CC               ?= gcc
-BASE_CFLAGS      ?= -Wall
-CFLAGS_AUTOVEC   := -O3 -mavx2 -mfma $(BASE_CFLAGS)
+BASE_CFLAGS      ?= -fopt-info-vec-optimized -Wall
+CFLAGS_AUTOVEC   := -O3 -mavx2 -mfma  $(BASE_CFLAGS)
 CFLAGS_UNALIGNED := -O3 -mavx2 -mfma -fopenmp-simd -DMODE_UNALIGNED $(BASE_CFLAGS)
 CFLAGS_ALIGNED   := -O3 -mavx2 -mfma -fopenmp-simd -DMODE_ALIGNED $(BASE_CFLAGS)
 CFLAGS_TEST      := -O3 -mavx2 -mfma -fopenmp-simd $(BASE_CFLAGS)
