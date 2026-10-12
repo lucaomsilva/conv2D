@@ -36,6 +36,12 @@ uninstall/tools: ## Uninstall performance and energy profiling tools using DNF p
 baseline-%: ## General make for baseline
 	@make -C baseline $*
 
+##@ Vectorize (SIMD)
+
+.PHONY: vectorize-%
+vectorize-%: ## General make for vectorize module (e.g. make vectorize-build, make vectorize-test)
+	@make -C vectorize $*
+
 ##@ Build
 
 .PHONY: build
