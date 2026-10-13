@@ -42,20 +42,26 @@ baseline-%: ## General make for baseline
 vectorize-%: ## General make for vectorize module (e.g. make vectorize-build, make vectorize-test)
 	@make -C vectorize $*
 
+##@ Blocking (Tiling)
+
+.PHONY: blocking-%
+blocking-%: ## General make for blocking module (e.g. make blocking-build, make blocking-test)
+	@make -C blocking $*
+
 ##@ Build
 
 .PHONY: build
-build: baseline-build vectorize-build ## Compile vectorize 2D convolution program
+build: baseline-build vectorize-build blocking-build ## Compile vectorize 2D convolution program
 
 ##@ Run
 
 .PHONY: run
-run: baseline-run vectorize-run ## Run vectorize benchmark binaries
+run: baseline-run vectorize-run blocking-run ## Run vectorize benchmark binaries
 
 ##@ Test
 
 .PHONY: test
-test: baseline-test vectorize-test ## Run 2D convolution unit tests
+test: baseline-test vectorize-test blocking-test ## Run 2D convolution unit tests
 
 ##@ Documentation
 
@@ -81,4 +87,4 @@ clean/docs/tools: ## Remove generated tools documentation directory
 	rm -rf $(DOCS_DIR)/tools
 
 .PHONY: clean
-clean: clean/docs/hardware clean/docs/tools baseline-clean vectorize-clean ## Clean all generated artifacts
+clean: clean/docs/hardware clean/docs/tools baseline-clean vectorize-clean blocking-clean ## Clean all generated artifacts
