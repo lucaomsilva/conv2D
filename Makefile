@@ -63,6 +63,14 @@ run: baseline-run vectorize-run blocking-run ## Run vectorize benchmark binaries
 .PHONY: test
 test: baseline-test vectorize-test blocking-test ## Run 2D convolution unit tests
 
+##@ Formatting
+
+.PHONY: format
+format: baseline-format vectorize-format blocking-format ## Format all .c/.h files in every module with clang-format
+
+.PHONY: format-check
+format-check: baseline-format-check vectorize-format-check blocking-format-check ## Check formatting of all modules without modifying files
+
 ##@ Documentation
 
 .PHONY: docs

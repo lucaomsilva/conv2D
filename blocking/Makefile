@@ -17,6 +17,10 @@ SCRIPTS_DIR := scripts
 SRC      := $(CONV_DIR)/conv2d.c $(SRC_DIR)/main.c
 SRC_TEST := $(CONV_DIR)/conv2d.c $(TEST_DIR)/test_conv.c
 
+# Format Files
+CLANG_FORMAT ?= clang-format
+FORMAT_FILES := $(shell find $(SRC_DIR) $(TEST_DIR) -name '*.[ch]')
+
 # Color output
 BLUE=\033[0;34m
 GREEN=\033[0;32m
@@ -100,6 +104,18 @@ asm: ## Generate assembly files (.s) in bin/ for compiler vectorization and loop
 	$(CC) $(CFLAGS_SEQ) -S -fverbose-asm $(CONV_DIR)/conv2d.c -o $(BIN_DIR)/conv2d_seq.s
 	$(CC) $(CFLAGS_SIMD) -S -fverbose-asm $(CONV_DIR)/conv2d.c -o $(BIN_DIR)/conv2d_simd.s
 	@echo -e "$(GREEN)Assembly files generated in $(BIN_DIR)/ (conv2d_seq.s, conv2d_simd.s)$(NC)"
+
+##@ Formatting
+
+.PHONY: format
+format: ## Format all .c/.h files in place using the root .clang-format
+	$(CLANG_FORMAT) -i $(FORMAT_FILES)
+	@echo -e "$(GREEN)Formatted: $(FORMAT_FILES)$(NC)"
+
+.PHONY: format-check
+format-check: ## Check .c/.h formatting without modifying files (fails if changes are needed)
+	$(CLANG_FORMAT) --dry-run --Werror $(FORMAT_FILES)
+	@echo -e "$(GREEN)Formatting OK$(NC)"
 
 ##@ Clean
 
