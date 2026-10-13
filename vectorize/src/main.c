@@ -1,20 +1,17 @@
+#include "./conv/conv2d.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "./conv/conv2d.h"
 
 // Generic timing wrapper function
 static inline double func_time(
 #ifdef MODE_ALIGNED
-    const float* __restrict__ input,
-    float* __restrict__ output,
+    const float *__restrict__ input, float *__restrict__ output,
 #else
-    const float* input,
-    float* output,
+    const float *input, float *output,
 #endif
-    int N, const float kernel[3][3])
-{
+    int N, const float kernel[3][3]) {
     struct timespec start, end;
 
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -24,7 +21,7 @@ static inline double func_time(
     return (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) * 1e-9;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     int N = (argc > 1) ? atoi(argv[1]) : 1024;
 
     printf("===========================================\n");
@@ -43,11 +40,11 @@ int main(int argc, char* argv[]) {
     size_t bytes = ((raw_bytes + 31) / 32) * 32;
 
 #ifdef MODE_ALIGNED
-    float* input  = (float*) aligned_alloc(32, bytes);
-    float* output = (float*) aligned_alloc(32, bytes);
+    float *input = (float *)aligned_alloc(32, bytes);
+    float *output = (float *)aligned_alloc(32, bytes);
 #else
-    float* input  = (float*) malloc(bytes);
-    float* output = (float*) calloc(N * N, sizeof(float));
+    float *input = (float *)malloc(bytes);
+    float *output = (float *)calloc(N * N, sizeof(float));
 #endif /* ifdef MODE_ALIGNED */
 
     if (!input || !output) {

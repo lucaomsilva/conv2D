@@ -1,8 +1,8 @@
+#include "../src/conv/conv2d.h"
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
-#include "../src/conv/conv2d.h"
 
 // Tolerance threshold for floating-point comparisons
 #define EPSILON 1e-5f
@@ -12,13 +12,10 @@
 void test_identity_kernel() {
     printf("[TEST] Running test_identity_kernel...\n");
     int N = 5;
-    float input[25] = {
-         1.0f,  2.0f,  3.0f,  4.0f,  5.0f,
-         6.0f,  7.0f,  8.0f,  9.0f, 10.0f,
-        11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
-        16.0f, 17.0f, 18.0f, 19.0f, 20.0f,
-        21.0f, 22.0f, 23.0f, 24.0f, 25.0f
-    };
+    float input[25] = {1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,
+                       8.0f,  9.0f,  10.0f, 11.0f, 12.0f, 13.0f, 14.0f,
+                       15.0f, 16.0f, 17.0f, 18.0f, 19.0f, 20.0f, 21.0f,
+                       22.0f, 23.0f, 24.0f, 25.0f};
     float output[25] = {0};
 
     conv2d_row_major(input, output, N, IDENTITY_KERNEL);
@@ -35,7 +32,8 @@ void test_identity_kernel() {
 }
 
 // Test 2: Box Blur Constant Matrix Validation
-// A constant matrix filled with 9.0f blurred by a 1/9 box kernel must equal 9.0f.
+// A constant matrix filled with 9.0f blurred by a 1/9 box kernel must
+// equal 9.0f.
 void test_box_blur_kernel() {
     printf("[TEST] Running test_box_blur_kernel...\n");
     int N = 5;
@@ -63,9 +61,9 @@ void test_box_blur_kernel() {
 void test_row_vs_col_major_equivalence() {
     printf("[TEST] Running test_row_vs_col_major_equivalence...\n");
     int N = 64;
-    float* input   = (float*) malloc(N * N * sizeof(float));
-    float* out_row = (float*) calloc(N * N, sizeof(float));
-    float* out_col = (float*) calloc(N * N, sizeof(float));
+    float *input = (float *)malloc(N * N * sizeof(float));
+    float *out_row = (float *)calloc(N * N, sizeof(float));
+    float *out_col = (float *)calloc(N * N, sizeof(float));
 
     assert(input != NULL);
     assert(out_row != NULL);
@@ -90,7 +88,8 @@ void test_row_vs_col_major_equivalence() {
     free(input);
     free(out_row);
     free(out_col);
-    printf("       -> PASSED: Row-Major and Column-Major outputs are identical.\n");
+    printf("       -> PASSED: Row-Major and Column-Major outputs are "
+           "identical.\n");
 }
 
 int main() {
