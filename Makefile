@@ -63,6 +63,7 @@ build: baseline-build vectorize-build blocking-build library-build ## Compile ve
 
 .PHONY: run
 run: baseline-run vectorize-run blocking-run library-run ## Run vectorize benchmark binaries
+	./scripts/compile_data.py
 
 ##@ Test
 
