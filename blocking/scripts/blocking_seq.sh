@@ -35,7 +35,7 @@ for N in "${SIZES[@]}"; do
     echo "----------------------------------------------------------"
 
     PROFILER="$BLOCKING_DIR/scripts/profile_metrics.py"
-    sudo python3 "$PROFILER" --binary "$BINARY" --size "$N" --block-size "$B" --output-csv "$CSV_FILE" --runs 10 --warmup 5
+    sudo python3 "$PROFILER" --binary "$BINARY" --size "$N" --block-size "$B" --output-csv "$CSV_FILE" --runs 10
   done
 done
 
