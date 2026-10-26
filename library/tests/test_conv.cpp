@@ -65,6 +65,8 @@ int main() {
 
     int test_sizes[] = {64, 65, 1024};
 
+    cv::setNumThreads(1);
+
     for (int N : test_sizes) {
         test_opencv(N, GAUSSIAN_KERNEL, "GAUSSIAN_KERNEL");
         test_opencv(N, IDENTITY_KERNEL, "IDENTITY_KERNEL");
