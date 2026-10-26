@@ -33,7 +33,7 @@ for N in "${SIZES[@]}"; do
   echo "----------------------------------------------------------"
 
   PROFILER="$LIBRARY_DIR/scripts/profile_metrics.py"
-  sudo python3 "$PROFILER" --binary "$BINARY" --size "$N" --mode 0 --output-csv "$CSV_FILE" --runs 10 --warmup 5
+  sudo python3 "$PROFILER" --binary "$BINARY" --size "$N" --output-csv "$CSV_FILE" --runs 10
 done
 
 echo "=========================================================="
