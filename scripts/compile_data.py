@@ -16,7 +16,7 @@ OUT = os.path.join(DATA, "compiled")
 
 METRICS = ["execution_time_s", "l1_misses", "l2_misses", "l3_misses",
            "instructions", "cycles", "cpi", "mflops", "energy_joules",
-           "power_watts", "mflops_per_watt"]
+           "power_watts", "mflops_per_watt", "start_temp_c"]
 COUNTERS = {"l1_misses", "l2_misses", "l3_misses", "instructions", "cycles", "cpi"}
 BASELINE = ("baseline_no_o3", "row")  # speedup reference, same matrix size
 
@@ -64,6 +64,8 @@ def summarize(runs):
             s[f"{m}_std"] = st.stdev(vals) if len(vals) > 1 else None
             s[f"{m}_median"] = st.median(vals) if vals else None
             s[f"{m}_valid"] = len(vals)
+        temps = [r["start_temp_c"] for r in rows if r["start_temp_c"] is not None]
+        s["start_temp_c_max"] = max(temps) if temps else None
         summary.append(s)
 
     base = {(s["matrix_size"]): s for s in summary
