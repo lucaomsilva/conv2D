@@ -5,6 +5,13 @@ import subprocess
 import json
 import re
 import argparse
+import tempfile
+import time
+import glob
+
+PIN_CPU = 2  # P-core (cpu_core = 0-7, cpu_atom = 8-15)
+TEMP_LIMIT_C = 60.0
+TEMP_MAX_WAIT_S = 60
 
 # ==============================================================================
 # STAGE 1: Argument Parsing (Extensible CLI Flags)
@@ -16,7 +23,6 @@ def parse_args():
     parser.add_argument("--mode", type=int, required=True, help="Access mode (0 = Row-Major, 1 = Column-Major)")
     parser.add_argument("--output-csv", required=True, help="Target CSV filepath")
     parser.add_argument("--runs", type=int, default=10, help="Number of benchmark runs")
-    parser.add_argument("--warmup", type=int, default=5, help="Number of warmup runs")
     return parser.parse_args()
 
 
@@ -73,58 +79,57 @@ def initialize_csv_header(csv_filepath:str):
     write_header = not os.path.exists(csv_filepath) or os.path.getsize(csv_filepath) == 0
     if write_header:
         with open(csv_filepath, "w") as f:
-            f.write("binary_name,matrix_size,mode,mode_name,execution_time_s,l1_misses,l2_misses,l3_misses,instructions,cycles,cpi,mflops,energy_joules,power_watts,mflops_per_watt\n")
+            f.write("binary_name,matrix_size,mode,mode_name,execution_time_s,l1_misses,l2_misses,l3_misses,instructions,cycles,cpi,mflops,energy_joules,power_watts,mflops_per_watt,start_temp_c\n")
 
 
 # ==============================================================================
-# Helper Function: RAPL Energy Reader
+# Helper Function: perf Control FIFOs
 # ==============================================================================
-def read_rapl_energy_uj():
-    """Reads RAPL energy in microjoules if accessible, checking intel-rapl powercap zones."""
-    total_uj = 0
-    found = False
-    rapl_base = "/sys/class/powercap/intel-rapl"
-    if not os.path.exists(rapl_base):
-        return None
+def create_perf_fifos(tmp_dir:str):
+    ctl_path = os.path.join(tmp_dir, "perf_ctl.fifo")
+    ack_path = os.path.join(tmp_dir, "perf_ack.fifo")
+    os.mkfifo(ctl_path)
+    os.mkfifo(ack_path)
+    return ctl_path, ack_path
 
-    try:
-        for zone in os.listdir(rapl_base):
-            if zone.startswith("intel-rapl:"):
-                energy_file = os.path.join(rapl_base, zone, "energy_uj")
-                name_file = os.path.join(rapl_base, zone, "name")
-                if os.path.exists(energy_file):
-                    name = ""
-                    if os.path.exists(name_file):
-                        with open(name_file, 'r') as f:
-                            name = f.read().strip()
-                    if "package" in name.lower() or name == "" or zone == "intel-rapl:0":
-                        with open(energy_file, 'r') as f:
-                            val = int(f.read().strip())
-                            total_uj += val
-                            found = True
-    except Exception:
-        pass
 
-    return total_uj if found else None
+def find_pkg_temp_path():
+    for zone in glob.glob("/sys/class/thermal/thermal_zone*"):
+        with open(os.path.join(zone, "type")) as f:
+            if f.read().strip() == "x86_pkg_temp":
+                return os.path.join(zone, "temp")
+    return None
+
+
+def read_temp_c(path):
+    with open(path) as f:
+        return int(f.read().strip()) / 1000.0
+
+
+def wait_for_cooldown(path):
+    """Waits until the CPU package is at or below TEMP_LIMIT_C (max TEMP_MAX_WAIT_S)."""
+    if path is None:
+        return 0.0
+    start = time.monotonic()
+    temp = read_temp_c(path)
+    while temp > TEMP_LIMIT_C and time.monotonic() - start < TEMP_MAX_WAIT_S:
+        time.sleep(1)
+        temp = read_temp_c(path)
+    if temp > TEMP_LIMIT_C:
+        print(f"    Warning: {temp:.1f} C after {TEMP_MAX_WAIT_S} s, running anyway")
+    return temp
 
 
 # ==============================================================================
-# STAGE 6: Combined Warmup & Execution Engine
+# STAGE 6: Execution Engine
 # ==============================================================================
-def execute_profiling_benchmark(binary_path:str, size:int, mode:int, warmup_runs:int, benchmark_runs:int, csv_path:str, cpu_vendor:str):
-    """
-    Executes warmup runs first, followed by measured benchmark runs with perf stat & RAPL energy reads.
-    """
+def execute_profiling_benchmark(binary_path:str, size:int, mode:int, benchmark_runs:int, csv_path:str, cpu_vendor:str):
+    """Executes the measured benchmark runs under perf stat."""
     binary_name = os.path.basename(binary_path)
     mode_name = "row" if mode == 0 else "col"
     print(f"=== Profiling {binary_name} | CPU: {cpu_vendor} | Size: {size}x{size} | Mode: {mode_name} ===")
 
-    # --------------------------------------------------------------------------
-    # Step 6.1: Warmup Phase (Runs FIRST)
-    # --------------------------------------------------------------------------
-    print(f" -> Executing {warmup_runs} warmup runs...")
-    for _ in range(warmup_runs):
-        subprocess.run([binary_path, str(size), str(mode)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    pin = ["taskset", "-c", str(PIN_CPU)]
 
     # Define hardware counter perf events according to CPU vendor
     if cpu_vendor == "AMD":
@@ -132,50 +137,46 @@ def execute_profiling_benchmark(binary_path:str, size:int, mode:int, warmup_runs
     else:
         events = ["L1-dcache-load-misses", "l2_rqsts.miss", "LLC-load-misses", "cycles", "instructions"]
 
-    # --------------------------------------------------------------------------
-    # Step 6.2: Benchmark & Profiling Phase (Runs AFTER Warmup)
-    # --------------------------------------------------------------------------
+    temp_path = find_pkg_temp_path()
+
     print(f" -> Executing {benchmark_runs} profiled benchmark runs...")
     for i in range(benchmark_runs):
-        # 1. Read RAPL start
-        rapl_start_uj = read_rapl_energy_uj()
+        start_temp_c = wait_for_cooldown(temp_path)
 
-        # 2. Execute binary under perf stat (with fallback handling)
-        cmd = ["perf", "stat", "-e", ",".join(events), binary_path, str(size), str(mode)]
-        try:
-            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout_text = proc.stdout
-            stderr_text = proc.stderr
-        except Exception as e:
-            # Fallback if perf fails or permission denied
-            print(f" -> perf command failed: {e}")
-            proc = subprocess.run([binary_path, str(size), str(mode)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout_text = proc.stdout
-            stderr_text = ""
+        # Counters start disabled (-D -1); the binary enables them around its loop
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ctl_path, ack_path = create_perf_fifos(tmp_dir)
+            env = dict(os.environ, PERF_CTL_FIFO=ctl_path, PERF_ACK_FIFO=ack_path)
+            cmd = ["perf", "stat", "-D", "-1", "--control", f"fifo:{ctl_path},{ack_path}",
+                   "-e", ",".join(events)] + pin + [binary_path, str(size), str(mode)]
+            try:
+                proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+                stdout_text = proc.stdout
+                stderr_text = proc.stderr
+            except Exception as e:
+                # Fallback if perf fails or permission denied
+                print(f" -> perf command failed: {e}")
+                proc = subprocess.run(pin + [binary_path, str(size), str(mode)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                stdout_text = proc.stdout
+                stderr_text = ""
 
-        # 3. Read RAPL end
-        rapl_end_uj = read_rapl_energy_uj()
-        energy_joules = 0.0
-        if rapl_start_uj is not None and rapl_end_uj is not None and rapl_end_uj >= rapl_start_uj:
-            energy_joules = (rapl_end_uj - rapl_start_uj) / 1e6
-
-        # 4. Stage 7: Parse C stdout JSON & perf stderr
+        # Stage 7: Parse C stdout JSON & perf stderr
         c_json, perf_data = parse_outputs(stdout_text, stderr_text)
 
-        # 5. Stage 8: Compute metrics
+        # Stage 8: Compute metrics
         metric_row = compute_metrics(
-            kernel_time_s=c_json.get("kernel_time_s", 0.0),
+            c_json=c_json,
             perf_counters=perf_data,
-            energy_joules=energy_joules,
             matrix_size=size,
             mode=mode,
             binary_name=binary_name
         )
+        metric_row["start_temp_c"] = start_temp_c
 
-        # 6. Stage 9: Export metric row to CSV
+        # Stage 9: Export metric row to CSV
         append_metric_row(csv_path, metric_row)
 
-        print(f"    Run {i+1}/{benchmark_runs}: Time={metric_row['execution_time_s']:.6f}s | MFLOPS={metric_row['mflops']:.2f} | CPI={metric_row['cpi']:.2f} | Energy={metric_row['energy_joules']:.4f}J | Power={metric_row['power_watts']:.2f}W")
+        print(f"    Run {i+1}/{benchmark_runs}: Time={metric_row['execution_time_s']:.6f}s | MFLOPS={metric_row['mflops']:.2f} | CPI={metric_row['cpi']:.2f} | Energy={metric_row['energy_joules']:.4f}J | Power={metric_row['power_watts']:.2f}W | Start={start_temp_c:.1f}C")
 
     print(f"Successfully saved profiling data to: {csv_path}")
 
@@ -239,12 +240,20 @@ def parse_outputs(stdout_text, stderr_text):
 # ==============================================================================
 # STAGE 8: Derived Metrics Computation
 # ==============================================================================
-def compute_metrics(kernel_time_s, perf_counters, energy_joules, matrix_size, mode, binary_name):
-    """Computes CPI, MFLOPS, Power, and MFLOPS/Watt using kernel_time_s from C."""
+def compute_metrics(c_json, perf_counters, matrix_size, mode, binary_name):
+    """Computes per-call metrics. Counters and energy are divided by `reps`."""
     mode_name = "row" if mode == 0 else "col"
 
-    cycles = perf_counters.get("cycles", 0)
-    instructions = perf_counters.get("instructions", 0)
+    kernel_time_s = c_json.get("kernel_time_s", 0.0)
+    reps = max(int(c_json.get("reps", 1)), 1)
+    total_time_s = c_json.get("total_time_s", 0.0)
+    loop_energy_j = c_json.get("energy_j", -1.0)
+
+    per_call = {k: round(perf_counters.get(k, 0) / reps)
+                for k in ("l1_misses", "l2_misses", "l3_misses", "cycles", "instructions")}
+
+    cycles = per_call["cycles"]
+    instructions = per_call["instructions"]
     cpi = (cycles / instructions) if (cycles > 0 and instructions > 0) else 0.0
 
     # 2D Convolution 3x3 filter FLOP calculation: (N-2)^2 * 17 FLOPs
@@ -254,8 +263,9 @@ def compute_metrics(kernel_time_s, perf_counters, energy_joules, matrix_size, mo
     else:
         mflops = 0.0
 
-    power_watts = (energy_joules / kernel_time_s) if (energy_joules > 0 and kernel_time_s > 0) else 0.0
-    mflops_per_watt = (mflops / power_watts) if power_watts > 0 else (mflops / energy_joules if energy_joules > 0 else 0.0)
+    energy_joules = (loop_energy_j / reps) if loop_energy_j > 0 else 0.0
+    power_watts = (loop_energy_j / total_time_s) if (loop_energy_j > 0 and total_time_s > 0) else 0.0
+    mflops_per_watt = (mflops / power_watts) if power_watts > 0 else 0.0
 
     return {
         "binary_name": binary_name,
@@ -263,9 +273,9 @@ def compute_metrics(kernel_time_s, perf_counters, energy_joules, matrix_size, mo
         "mode": mode,
         "mode_name": mode_name,
         "execution_time_s": kernel_time_s,
-        "l1_misses": perf_counters.get("l1_misses", 0),
-        "l2_misses": perf_counters.get("l2_misses", 0),
-        "l3_misses": perf_counters.get("l3_misses", 0),
+        "l1_misses": per_call["l1_misses"],
+        "l2_misses": per_call["l2_misses"],
+        "l3_misses": per_call["l3_misses"],
         "instructions": instructions,
         "cycles": cycles,
         "cpi": cpi,
@@ -284,9 +294,9 @@ def append_metric_row(csv_filepath, m):
     with open(csv_filepath, "a") as f:
         row = (
             f"{m['binary_name']},{m['matrix_size']},{m['mode']},{m['mode_name']},"
-            f"{m['execution_time_s']:.6f},{m['l1_misses']},{m['l2_misses']},{m['l3_misses']},"
+            f"{m['execution_time_s']:.9f},{m['l1_misses']},{m['l2_misses']},{m['l3_misses']},"
             f"{m['instructions']},{m['cycles']},{m['cpi']:.4f},{m['mflops']:.4f},"
-            f"{m['energy_joules']:.6f},{m['power_watts']:.4f},{m['mflops_per_watt']:.4f}\n"
+            f"{m['energy_joules']:.9f},{m['power_watts']:.4f},{m['mflops_per_watt']:.4f},{m['start_temp_c']:.1f}\n"
         )
         f.write(row)
 
@@ -302,7 +312,6 @@ def main():
         binary_path=args.binary,
         size=args.size,
         mode=args.mode,
-        warmup_runs=args.warmup,
         benchmark_runs=args.runs,
         csv_path=args.output_csv,
         cpu_vendor=cpu_vendor
