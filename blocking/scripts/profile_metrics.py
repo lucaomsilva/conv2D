@@ -79,7 +79,8 @@ def initialize_csv_header(csv_filepath:str):
     write_header = not os.path.exists(csv_filepath) or os.path.getsize(csv_filepath) == 0
     if write_header:
         with open(csv_filepath, "w") as f:
-            f.write("binary_name,matrix_size,block_size,mode_name,execution_time_s,l1_misses,l2_misses,l3_misses,instructions,cycles,cpi,mflops,energy_joules,power_watts,mflops_per_watt,start_temp_c\n")
+            f.write("binary_name,matrix_size,block_size,mode_name,execution_time_s,l1_misses,l2_misses,l3_misses,instructions,cycles,cpi,mflops,energy_joules,power_watts,mflops_per_watt,start_temp_c,"
+                    "pack_time_s,unpack_time_s,thp_anon_kb,buffers_kb\n")
 
 
 # ==============================================================================
@@ -283,7 +284,10 @@ def compute_metrics(c_json, perf_counters, matrix_size, mode, binary_name):
         "mflops": mflops,
         "energy_joules": energy_joules,
         "power_watts": power_watts,
-        "mflops_per_watt": mflops_per_watt
+        "mflops_per_watt": mflops_per_watt,
+        # Blocked-layout binaries only; empty for the others
+        "layout_extra": [c_json.get(k, "") for k in
+                         ("pack_time_s", "unpack_time_s", "thp_anon_kb", "buffers_kb")]
     }
 
 
@@ -297,7 +301,8 @@ def append_metric_row(csv_filepath, m):
             f"{m['binary_name']},{m['matrix_size']},{m['mode']},{m['mode_name']},"
             f"{m['execution_time_s']:.9f},{m['l1_misses']},{m['l2_misses']},{m['l3_misses']},"
             f"{m['instructions']},{m['cycles']},{m['cpi']:.4f},{m['mflops']:.4f},"
-            f"{m['energy_joules']:.9f},{m['power_watts']:.4f},{m['mflops_per_watt']:.4f},{m['start_temp_c']:.1f}\n"
+            f"{m['energy_joules']:.9f},{m['power_watts']:.4f},{m['mflops_per_watt']:.4f},{m['start_temp_c']:.1f},"
+            + ",".join(str(v) for v in m["layout_extra"]) + "\n"
         )
         f.write(row)
 
