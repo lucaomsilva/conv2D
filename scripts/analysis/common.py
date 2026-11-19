@@ -8,8 +8,12 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SUMMARY = os.path.join(ROOT, "docs", "data", "compiled", "summary.csv")
-REPORT = os.path.join(ROOT, "docs", "report")
+REPORT = os.path.join(ROOT, "docs", "report", "ap1")
 FIGURES = os.path.join(REPORT, "figures")
+REPORT_AP2 = os.path.join(ROOT, "docs", "report", "ap2")
+FIGURES_AP2 = os.path.join(REPORT_AP2, "figures")
+AP2_CATEGORY = "parallel"
+TEXT_FIELDS = ("category", "binary_name", "mode_name", "schedule", "places")
 SIZES = [1024, 2048, 4096]
 
 # Label for each implementation: (binary_name, mode_name) -> label.
@@ -29,15 +33,27 @@ def num(value):
     return float(value) if value not in (None, "") else None
 
 
+def read_rows():
+    with open(SUMMARY, newline="") as f:
+        return [{k: (v if k in TEXT_FIELDS else num(v)) for k, v in r.items()}
+                for r in csv.DictReader(f)]
+
+
+def load_ap2():
+    """Return the AP2 rows (docs/data/parallel/) with float metrics."""
+    return [r for r in read_rows() if r["category"] == AP2_CATEGORY]
+
+
 def load():
-    """Return a dict: (binary, size, mode, block) -> row with float metrics."""
+    """Return a dict: (binary, size, mode, block) -> row with float metrics (AP1 only)."""
     data = {}
     with open(SUMMARY, newline="") as f:
         for r in csv.DictReader(f):
+            if r["category"] == AP2_CATEGORY:
+                continue
             key = (r["binary_name"], int(r["matrix_size"]), r["mode_name"],
                    int(r["block_size"] or 0))
-            data[key] = {k: (num(v) if k not in ("category", "binary_name",
-                                                 "mode_name") else v)
+            data[key] = {k: (num(v) if k not in TEXT_FIELDS else v)
                          for k, v in r.items()}
     return data
 
