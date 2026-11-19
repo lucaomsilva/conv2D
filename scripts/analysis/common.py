@@ -53,6 +53,12 @@ def best_block(data, binary, size):
 
 
 def label(binary, mode, block=0):
+    if binary.startswith("blocking_layout"):
+        parts = binary.split("_")[2:]
+        kind = "Layout" + ("+SIMD" if "simd" in parts else "")
+        kind += "+NT" if "nt" in parts else ""
+        kind += "+HP" if "hp" in parts else ""
+        return f"{kind} B={block}"
     if binary.startswith("blocking"):
         kind = "Tiling" if binary.endswith("seq") else "Tiling+SIMD"
         return f"{kind} B={block}"
