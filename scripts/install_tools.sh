@@ -31,10 +31,6 @@ sudo dnf install -y --disablerepo="*lionheartp*" --skip-unavailable \
 # Optional: Try installing likwid if available in repos
 sudo dnf install -y likwid likwid-devel 2>/dev/null || echo "LIKWID not in standard repos; can be compiled from source if needed."
 
-# Install CodeCarbon via pip
-echo "Installing CodeCarbon (Python)..."
-pip3 install codecarbon 2>/dev/null || pip install codecarbon 2>/dev/null || echo "CodeCarbon pip install skipped."
-
 # Configure Non-Root Permissions for perf and powercap
 echo "Configuring permissions for perf and powercap..."
 sudo sysctl -w kernel.perf_event_paranoid=-1 || true

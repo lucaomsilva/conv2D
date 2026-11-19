@@ -18,8 +18,4 @@ sudo dnf remove -y \
     likwid \
     likwid-devel 2>/dev/null || true
 
-# Uninstall CodeCarbon
-echo "Uninstalling CodeCarbon..."
-pip3 uninstall -y codecarbon 2>/dev/null || pip uninstall -y codecarbon 2>/dev/null || echo "CodeCarbon uninstall skipped."
-
 echo "=== Uninstallation Complete! ==="
