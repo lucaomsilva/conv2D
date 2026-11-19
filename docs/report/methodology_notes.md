@@ -226,3 +226,46 @@ Conclusões:
 3. O `#pragma omp simd` sozinho deixou o código **mais lento** que a autovetorização.
 4. O "3,5×" dos dados antigos era efeito do método antigo: `MODE_ALIGNED` faz `memset` no `output` antes
    da medição (páginas já mapeadas), e os outros modos usam `calloc` (page faults dentro da chamada medida).
+
+## 7. AP2 (OpenMP): notas
+
+### 7.1 Por que tirar o `taskset`
+
+TODO. Com várias threads, o `taskset -c 2` prende todas as threads em uma CPU. O posicionamento passa a ser do OpenMP (`OMP_PLACES` + `OMP_PROC_BIND`).
+
+### 7.2 Posicionamento das threads
+
+TODO. Principal (`p-ht-e`): `{2},{4},{6},{0}` (um por P-core, começando na CPU 2 como na AP1) → `{3},{5},{7},{1}` (irmãos HT) → `{8}`…`{15}` (E-cores). Com `close`, a thread i fica no place i (conferido com `OMP_DISPLAY_AFFINITY`).
+Threads: `main` 1–16; `places` e `schedules` 1, 2, 4, 6, …, 16 (pares + 1). Com `p-ht-e`: T ≤ 4 só P-cores, 5–8 = + HT, 9–16 = + E-cores.
+Comparação (`static`): `ht-p-e` (HT primeiro), `p-e-ht` (E-cores antes do HT) e `none` (sem binding, o Linux escolhe).
+
+### 7.3 Eventos do perf em CPU híbrida
+
+TODO. Na AP1 o processo ficava em um P-core. Na AP2 há threads em E-cores:
+- `L1-dcache-load-misses` não existe em `cpu_atom`;
+- `LLC-load-misses` em `cpu_atom` conta quase nada (135 k contra 191 M de `longest_lat_cache.miss`, N = 2048, 16 threads);
+- eventos usados: L1 = `mem_load_retired.l1_miss` (core) + `mem_load_uops_retired.l1_miss` (atom), mesmo código 0xd1/umask 8; L2 = `l2_request.miss`; L3 = `longest_lat_cache.miss`.
+Consequência: os misses da AP2 não são comparáveis aos da AP1. Comparar com T = 1 da própria AP2.
+
+### 7.4 Cópia local dos coeficientes
+
+TODO. Com só o `parallel for`, T = 1 ficou ≈ 35 % mais lento que `simd_aligned` (0,30 × 0,23 ms, N = 1024). Na função criada pelo OpenMP, o GCC perde o `__restrict__` e recarrega os 9 coeficientes a cada iteração. Uma cópia local (`firstprivate(k)`) recupera 0,24 ms. `schedule(static)` × `schedule(runtime)` não muda o tempo.
+
+### 7.5 Política de frequência e warm-up
+
+TODO. O `parallel_omp.sh` ativa o perfil `throughput-performance` do `tuned` (= modo "Desempenho" do GNOME: governor, EPP e `platform_profile` = `performance`, como na AP1) e restaura o perfil anterior no fim (`trap` em EXIT; Ctrl+C também restaura). Turbo continua ligado. Perfil `balanced`: governor `powersave`, EPP `balance_performance`, `platform_profile` `balanced`, PL1 90 W / PL2 115 W (RAPL MMIO).
+Por que não fixar a frequência máxima: com 16 threads os limites de potência (PL1/PL2) e de temperatura baixam a frequência de qualquer forma; fixar também esconde o efeito do DVFS na energia.
+Warm-up: o do Python saiu na AP1 (seção 2.6). A chamada sem medição no C continua: ela paga os page faults e, na AP2, cria o pool de threads do OpenMP. Com o governor em `performance`, a subida de frequência leva ms, coberta pela chamada sem medição e pela calibração.
+Espera de temperatura: medido ~1 s por execução, mesmo com 16 threads (T = 16, N = 4096).
+
+### 7.6 Referência da AP1 na mesma sessão
+
+TODO. O `simd_aligned` e o OpenCV (`library_o3`, 1 thread) rodam de novo no experimento `reference` (CPU 2, mesma política de frequência). O speedup "AP1" usa essa medida.
+
+### 7.7 OpenCV não paraleliza este filtro
+
+TODO. OpenCV 4.11 (TBB, sem IPP), `cv::setNumThreads(T)`, N = 4096: `filter2D` 9,71 / 9,52 / 9,63 ms (T = 1 / 4 / 16); `GaussianBlur` e `sepFilter2D` iguais. Com T = 16, task-clock (1,857 s) = tempo real (1,864 s): só um núcleo trabalha. Por isso o OpenCV fica só com 1 thread.
+
+### 7.8 Custo da primeira chamada (por que manter a chamada sem medição)
+
+TODO. N = 1024, T = 16: 1,0 ms na 1ª chamada × 0,19 ms nas seguintes. N = 4096, T = 1: 19,6 × 6,8 ms. N = 4096, T = 16: 5,9–7,7 × ~4 ms. Page faults da saída + criação do pool de threads.
