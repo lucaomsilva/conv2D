@@ -48,35 +48,41 @@ vectorize-%: ## General make for vectorize module (e.g. make vectorize-build, ma
 blocking-%: ## General make for blocking module (e.g. make blocking-build, make blocking-test)
 	@make -C blocking $*
 
-##@ Blocking (Tiling)
+##@ Library (OpenCV)
 
 .PHONY: library-%
 library-%: ## General make for library module (e.g. make library-build, make library-test)
 	@make -C library $*
 
+##@ Parallel (OpenMP)
+
+.PHONY: parallel-%
+parallel-%: ## General make for parallel module (e.g. make parallel-build, make parallel-test)
+	@make -C parallel $*
+
 ##@ Build
 
 .PHONY: build
-build: baseline-build vectorize-build blocking-build library-build ## Compile vectorize 2D convolution program
+build: baseline-build vectorize-build blocking-build library-build parallel-build ## Compile vectorize 2D convolution program
 
 ##@ Run
 
 .PHONY: run
-run: baseline-run vectorize-run blocking-run library-run ## Run vectorize benchmark binaries
+run: baseline-run vectorize-run blocking-run library-run parallel-run ## Run vectorize benchmark binaries
 	./scripts/compile_data.py
 
 ##@ Test
 
 .PHONY: test
-test: baseline-test vectorize-test blocking-test library-test ## Run 2D convolution unit tests
+test: baseline-test vectorize-test blocking-test library-test parallel-test ## Run 2D convolution unit tests
 
 ##@ Formatting
 
 .PHONY: format
-format: baseline-format vectorize-format blocking-format library-format ## Format all .c/.h files in every module with clang-format
+format: baseline-format vectorize-format blocking-format library-format parallel-format ## Format all .c/.h files in every module with clang-format
 
 .PHONY: format-check
-format-check: baseline-format-check vectorize-format-check blocking-format-check library-format-check ## Check formatting of all modules without modifying files
+format-check: baseline-format-check vectorize-format-check blocking-format-check library-format-check parallel-format-check ## Check formatting of all modules without modifying files
 
 ##@ Documentation
 
@@ -102,4 +108,4 @@ clean/docs/tools: ## Remove generated tools documentation directory
 	rm -rf $(DOCS_DIR)/tools
 
 .PHONY: clean
-clean: clean/docs/hardware clean/docs/tools baseline-clean vectorize-clean blocking-clean library-clean ## Clean all generated artifacts
+clean: clean/docs/hardware clean/docs/tools baseline-clean vectorize-clean blocking-clean library-clean parallel-clean ## Clean all generated artifacts
