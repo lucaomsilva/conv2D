@@ -16,7 +16,9 @@ OUT = os.path.join(DATA, "compiled")
 
 METRICS = ["execution_time_s", "l1_misses", "l2_misses", "l3_misses",
            "instructions", "cycles", "cpi", "mflops", "energy_joules",
-           "power_watts", "mflops_per_watt", "start_temp_c"]
+           "power_watts", "mflops_per_watt", "start_temp_c",
+           # Blocked-layout binaries only (empty for the others)
+           "pack_time_s", "unpack_time_s", "thp_anon_kb", "buffers_kb"]
 COUNTERS = {"l1_misses", "l2_misses", "l3_misses", "instructions", "cycles", "cpi"}
 BASELINE = ("baseline_no_o3", "row")  # speedup reference, same matrix size
 
