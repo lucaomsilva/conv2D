@@ -75,7 +75,12 @@ Other folders:
   ```bash
   make install/tools
   ```
-- `matplotlib` for the graphs: `sudo dnf install python3-matplotlib`.
+- Python libraries for the analysis (`requirements.txt`: matplotlib), installed in a local `.venv`:
+  ```bash
+  make install/analysis-tools     # create .venv and pip install -r requirements.txt
+  make uninstall/analysis-tools   # remove .venv
+  ```
+  The benchmark profilers run with `sudo python3` and use only the standard library, so they do not need the `.venv`.
 - `sudo` access: the benchmarks read RAPL energy (root only) and AP2 switches the `tuned` power profile.
 
 ### Build and Test
@@ -100,9 +105,7 @@ Each binary prints a `JSON_METRICS:{...}` line with the time per call, repetitio
 ### AP1 Benchmarks
 ```bash
 make baseline-run vectorize-run blocking-run library-run
-python3 scripts/compile_data.py
-python3 scripts/analysis/compare.py       # docs/report/ap1/resume.md
-python3 scripts/analysis/plot_results.py  # docs/report/ap1/figures/
+make analysis/ap1   # compile data + docs/report/ap1/resume.md + docs/report/ap1/figures/
 ```
 
 ### AP2 Benchmarks
@@ -117,10 +120,10 @@ EXPERIMENTS=main SIZES=1024 THREADS="1 16" RUNS=2 make parallel-run
 # Full run: 216 configurations x 10 runs (~2 h 25)
 make parallel-run
 
-python3 scripts/compile_data.py
-python3 scripts/analysis/ap2_compare.py   # docs/report/ap2/resume.md
-python3 scripts/analysis/ap2_plots.py     # docs/report/ap2/figures/
+make analysis/ap2   # compile data + docs/report/ap2/resume.md + docs/report/ap2/figures/
 ```
+
+`make analysis` runs both analyses. `make analysis/data` only merges the CSVs into `docs/data/compiled/`.
 
 Environment variables to change the AP2 run: `EXPERIMENTS` (`reference main places schedules`), `SIZES`, `THREADS` (main experiment), `CMP_THREADS` (places and schedules), `RUNS`, `ALT_PLACES`, `ALT_SCHEDULES`.
 
