@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Make comparison graphs in docs/report/figures/ (needs matplotlib).
+"""Make comparison graphs in docs/report/ap1/figures/ (needs matplotlib).
 
 Use: python3 scripts/analysis/plot_results.py
 Install: pip install matplotlib
